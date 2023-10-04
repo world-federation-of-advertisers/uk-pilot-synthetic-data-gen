@@ -38,7 +38,7 @@ ACCEPTABLE_FREQ_DIST_CORRECTION_FACTOR = 0.1
 
 
 class CampaignSpec:
-    """Class that samples impressions given specification for a single campaign.
+    """Samples impressions on a given EDP on given dates, such that they approximately align with the given number of impressions, reach, and distributions of frequency, video completion, and viewability
 
     1. At initialization normalizes and reconstructs the frequency distribution to pad the frequency to meet the requirements of the other parameters.
         E.g. If freq distrubution is specified by [(1, 800), (2, 600), (3, 500)] 800 impressions with freq=1, 600 with freq=2...
@@ -48,15 +48,15 @@ class CampaignSpec:
              Also makes sure that this correction does not change the given freq dist more than a small amount
     2. At initialization creates a pool of vids to be used in the sampling. This pool of vids consists of repeats specified by the frequency distribution.
         E.g : If the freq dist specifies 5 impressions with freq=1 and 3 with freq=2 using vidSet {1..100} we can generate
-              vids=[1, 2, 3, 4, 5, 6 , 6, 7, 7, 8, 8]
+              vids=[1, 2, 3, 4, 5, 6 , 6, 7, 7, 8, 8] then, randomly shuffle this pool of vids.
     3. Selects number of impressions for each day = (total_impressions/numdays) + noise.  Where noise is uniform.
-    3. For each day, pops vids from the pool equal to the number of impressions for that day.
-    4. For each impression, samples the video completion and viewability specified by the given distributions for them.
+    3. For each day, pops vids from the pool according to the number of impressions for that day.
+    4. For each impression, independently samples the video completion and viewability specified by the given distributions for them.
     """
 
     def __init__(self, edpId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed):
         self.eventDataProviderId = edpId
-        self.num_days = numdays
+        self.num_days = nd
         self.dates = [sd + datetime.timedelta(days=x) for x in range(nd)]
         self.total_impressions = nImp
         self.total_reach = tr
