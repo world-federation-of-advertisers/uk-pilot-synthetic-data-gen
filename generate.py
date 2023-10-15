@@ -54,15 +54,17 @@ class CampaignSpec:
     4. For each impression, independently samples the video completion and viewability specified by the given distributions for them.
     """
 
-    def __init__(self, edpId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed):
+    def __init__(self, edpId, mcId, cId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed):
         self.eventDataProviderId = edpId
+        self.measurementConsumerId = mcId
+        self.campaignId = cId
         self.num_days = nd
         self.dates = [sd + datetime.timedelta(days=x) for x in range(nd)]
         self.total_impressions = nImp
         self.total_reach = tr
         tempFreqDist = DiscreteDist(self.normalize(freqDistSpec), random_seed)
         self.freq_dist = self.reconstruct_freq_dist(tempFreqDist)
-        self.video_completion_dist = DiscreteDist(videoCompDistSpec, random_seed)
+        self.video_completion_dist =  NoOpDiscreteDist() if videoCompDistSpec == None else DiscreteDist(videoCompDistSpec, random_seed)
         self.viewability_dist = DiscreteDist(viewabilityDistSpec, random_seed)
 
         self.vids = self.sampleVids()
@@ -118,6 +120,8 @@ class CampaignSpec:
             vid = self.vids.pop()
             imp = Impression(
                 self.eventDataProviderId,
+                self.campaignId,
+                self.measurementConsumerId,
                 vid,
                 self.video_completion_dist.sample(),
                 self.viewability_dist.sample(),
@@ -148,6 +152,12 @@ class Impression:
     # Id of the Event Data Provider
     eventDataProviderId: str
 
+    # Id of the campaign this impression belongs to
+    campaignId : str
+
+    # Id of the Measurement Consumer this impression belongs to
+    mcId : str
+
     # virtual person id
     vid: int
 
@@ -177,6 +187,9 @@ class DiscreteDist:
 
     def sample(self):
         return self.vals[self.custm.rvs(size=1)[0]]
+
+class NoOpDiscreteDist(DiscreteDist):
+    def sample(self): return "NaN"
 
 
 def generate(
