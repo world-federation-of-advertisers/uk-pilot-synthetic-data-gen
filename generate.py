@@ -54,7 +54,9 @@ class CampaignSpec:
     4. For each impression, independently samples the video completion and viewability specified by the given distributions for them.
     """
 
-    def __init__(self, edpId, mcId, cId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed):
+    def __init__(
+        self, edpId, mcId, cId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed
+    ):
         self.eventDataProviderId = edpId
         self.measurementConsumerId = mcId
         self.campaignId = cId
@@ -64,7 +66,9 @@ class CampaignSpec:
         self.total_reach = tr
         tempFreqDist = DiscreteDist(self.normalize(freqDistSpec), random_seed)
         self.freq_dist = self.reconstruct_freq_dist(tempFreqDist)
-        self.video_completion_dist =  NoOpDiscreteDist() if videoCompDistSpec == None else DiscreteDist(videoCompDistSpec, random_seed)
+        self.video_completion_dist = (
+            NoOpDiscreteDist() if videoCompDistSpec == None else DiscreteDist(videoCompDistSpec, random_seed)
+        )
         self.viewability_dist = DiscreteDist(viewabilityDistSpec, random_seed)
 
         self.vids = self.sampleVids()
@@ -153,10 +157,10 @@ class Impression:
     eventDataProviderId: str
 
     # Id of the campaign this impression belongs to
-    campaignId : str
+    campaignId: str
 
     # Id of the Measurement Consumer this impression belongs to
-    mcId : str
+    mcId: str
 
     # virtual person id
     vid: int
@@ -188,13 +192,17 @@ class DiscreteDist:
     def sample(self):
         return self.vals[self.custm.rvs(size=1)[0]]
 
+
 class NoOpDiscreteDist(DiscreteDist):
-    def sample(self): return "NaN"
+    def sample(self):
+        return "NaN"
 
 
 def generate(
     random_seed,
     edpId,
+    mcId,
+    campaignId,
     completionDistSpec,
     viewabilityDistSpec,
     realFreqDistSpec,
@@ -206,6 +214,8 @@ def generate(
     random.seed(random_seed)
     campaignSpec = CampaignSpec(
         edpId,
+        mcId,
+        campaignId,
         startdate,
         numdays,
         total_impressions,
