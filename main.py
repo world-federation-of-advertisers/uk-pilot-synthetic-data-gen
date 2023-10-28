@@ -14,10 +14,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-r", "--randomseed", help="Random seed", type=int)
 parser.add_argument("-e", "--edpname", help="Edp name")
 
-# Notes:
-# Changed Bouncy Curls	Happy Hair	Meta total reach from 1497257-> 1497258 (to make sure everything adds to each other correctly)
-# There are bunch of values where 50+ for completion is smaller than 75%+ for completion.
-
 
 def getCompletionDistSpec(configRow):
     zeroPlus = configRow["completion_0%+"]
@@ -61,7 +57,6 @@ def getViewabilityDistSpec(configRow):
 def getRealFreqDistSpec(configRow):
     mappingDict = {1: "Frequency 1", 2: "Frequency 2", 3: "Frequency 3", 4: "Frequency 4", 5: "Frequency 5+"}
     mappedResult = [(key, configRow[mappingDict[key]]) for key in mappingDict.keys()]
-    print("mappedResultmappedResult", mappedResult)
     assert configRow["Total Reach"] == sum([val[1] for val in mappedResult])
 
     return mappedResult
@@ -70,17 +65,6 @@ def getRealFreqDistSpec(configRow):
 def generate_and_analyze_for_edp(configRow, randomSeed):
     startDate = datetime.datetime.strptime(configRow["Start Date"], "%m/%d/%Y")
     numdays = configRow["Number of days"]
-
-    print(startDate)
-    print(numdays)
-    print("getCompletionDistSpec", getCompletionDistSpec(configRow))
-    print(getViewabilityDistSpec(configRow))
-    print(getRealFreqDistSpec(configRow))
-
-    print("########")
-    print("########")
-    print("########")
-    print("########")
 
     impressions = generate(
         randomSeed,
@@ -97,7 +81,7 @@ def generate_and_analyze_for_edp(configRow, randomSeed):
     )
 
     impressionsDataFrame = pd.DataFrame.from_records([asdict(imp) for imp in impressions])
-    impressionsDataFrame.to_csv(f"{config['edp_name']}_fake_data.csv", index=False)
+    impressionsDataFrame.to_csv(f"{configRow['Publisher']}_fake_data.csv", mode='a', index=False)
 
 
 if __name__ == "__main__":
@@ -107,11 +91,12 @@ if __name__ == "__main__":
     print("Random Seed = {},  Edp Name = {}".format(randomSeed, edpName))
     df = pd.read_csv("config.csv")
     df = df[df["Publisher"] == edpName]
+    randomObject = random.Random()
+
     for row in df.iterrows():
-        start = time.time()
-        print(f"START {row}")
-        generate_and_analyze_for_edp(row[1], randomSeed)
-        end = time.time()
-        print(end - start)
-        print(f"END {row}")
-        break
+    	start = time.time()
+    	print(f"START {row}")
+    	generate_and_analyze_for_edp(row[1], randomObject)
+    	end = time.time()
+    	print(end - start)
+    	print(f"END {row}")
