@@ -37,6 +37,8 @@ ACCEPTABLE_FREQ_DIST_CORRECTION_FACTOR = 0.1
 
 RAND_MIN = 0
 RAND_MAX = 100_000
+
+
 class CampaignSpec:
     """Samples impressions on a given EDP on given dates, such that they approximately align with the given number of impressions, reach, and distributions of frequency, video completion, and viewability
 
@@ -68,7 +70,9 @@ class CampaignSpec:
         tempFreqDist = DiscreteDist(self.normalize(freqDistSpec), self.random.randint(RAND_MIN, RAND_MAX))
         self.freq_dist = self.reconstruct_freq_dist(tempFreqDist)
         self.video_completion_dist = (
-            NoOpDiscreteDist() if videoCompDistSpec == None else DiscreteDist(videoCompDistSpec, self.random.randint(RAND_MIN, RAND_MAX))
+            NoOpDiscreteDist()
+            if videoCompDistSpec == None
+            else DiscreteDist(videoCompDistSpec, self.random.randint(RAND_MIN, RAND_MAX))
         )
         self.viewability_dist = DiscreteDist(viewabilityDistSpec, self.random.randint(RAND_MIN, RAND_MAX))
 
@@ -80,7 +84,7 @@ class CampaignSpec:
         prob_for_max_freq = list(filter(lambda x: x[0] == max_freq, temp_normailized))[0][1]
 
         distButMax = list(filter(lambda x: x[0] != max_freq, temp_normailized))
-        implied_prob_for_max_freq = round(1 - sum([prob for (val, prob) in distButMax]),3)
+        implied_prob_for_max_freq = round(1 - sum([prob for (val, prob) in distButMax]), 3)
 
         # There can be a correction but not much
         assert implied_prob_for_max_freq >= prob_for_max_freq
@@ -195,7 +199,7 @@ class DiscreteDist:
 
 class NoOpDiscreteDist(DiscreteDist):
     def __init__(self):
-        super().__init__([(0,1)], 0)
+        super().__init__([(0, 1)], 0)
 
     def sample(self):
         return "NaN"

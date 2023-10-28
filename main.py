@@ -81,7 +81,7 @@ def generate_and_analyze_for_edp(configRow, randomSeed):
     )
 
     impressionsDataFrame = pd.DataFrame.from_records([asdict(imp) for imp in impressions])
-    impressionsDataFrame.to_csv(f"{configRow['Publisher']}_fake_data.csv", mode='a', index=False)
+    impressionsDataFrame.to_csv(f"{configRow['Publisher']}_fake_data.csv", mode="a", index=False)
 
 
 if __name__ == "__main__":
@@ -94,9 +94,9 @@ if __name__ == "__main__":
     randomObject = random.Random()
 
     for row in df.iterrows():
-    	start = time.time()
-    	print(f"START {row}")
-    	generate_and_analyze_for_edp(row[1], randomObject)
-    	end = time.time()
-    	print(end - start)
-    	print(f"END {row}")
+        start = time.time()
+        print(f"START {row}")
+        generate_and_analyze_for_edp(row[1], randomObject)
+        end = time.time()
+        print(end - start)
+        print(f"END {row}")
