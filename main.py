@@ -62,12 +62,12 @@ def getRealFreqDistSpec(configRow):
     return mappedResult
 
 
-def generate_and_analyze_for_edp(configRow, randomSeed):
+def generate_and_analyze_for_edp(configRow, randomObject):
     startDate = datetime.datetime.strptime(configRow["Start Date"], "%m/%d/%Y")
     numdays = configRow["Number of days"]
 
     impressions = generate(
-        randomSeed,
+        randomObject,
         configRow["Publisher"],
         configRow["Advertiser"],
         configRow["Event Groups"],
@@ -92,6 +92,7 @@ if __name__ == "__main__":
     df = pd.read_csv("config.csv")
     df = df[df["Publisher"] == edpName]
     randomObject = random.Random()
+    randomObject.seed(randomSeed)
 
     for row in df.iterrows():
         start = time.time()
