@@ -16,7 +16,7 @@ Then run with providing
  1. EDP id. Either Digital1 or Digital2. 
  2. A random seed
 
-This command will generate a Digital1_fake_date.csv in your directory: 
+This command will generate a set of files in the form of `Digital1_row_*_fake_data.csv` in your directory: 
 
 ```
 python3 main.py -r 4 -e Digital1

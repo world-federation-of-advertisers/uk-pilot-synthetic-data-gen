@@ -8,6 +8,7 @@ import time
 import argparse
 import numpy as np
 import math
+import multiprocessing
 
 parser = argparse.ArgumentParser()
 
@@ -62,7 +63,11 @@ def getRealFreqDistSpec(configRow):
     return mappedResult
 
 
-def generate_and_analyze_for_edp(configRow, randomObject):
+def generate_and_analyze_for_edp(key, configRow, randomSeed):
+    print(f"START {configRow}")
+    randomObject = random.Random()
+    randomObject.seed(randomSeed + key)
+
     startDate = datetime.datetime.strptime(configRow["Start Date"], "%m/%d/%Y")
     numdays = configRow["Number of days"]
 
@@ -81,7 +86,8 @@ def generate_and_analyze_for_edp(configRow, randomObject):
     )
 
     impressionsDataFrame = pd.DataFrame.from_records([asdict(imp) for imp in impressions])
-    impressionsDataFrame.to_csv(f"{configRow['Publisher']}_fake_data.csv", mode="a", index=False)
+    impressionsDataFrame.to_csv(f"{configRow['Publisher']}_row_{key}_fake_data.csv", mode="a", index=False)
+    print(f"END {configRow}")
 
 
 if __name__ == "__main__":
@@ -91,13 +97,22 @@ if __name__ == "__main__":
     print("Random Seed = {},  Edp Name = {}".format(randomSeed, edpName))
     df = pd.read_csv("config.csv")
     df = df[df["Publisher"] == edpName]
-    randomObject = random.Random()
-    randomObject.seed(randomSeed)
 
+    start = time.time()
+
+    # Create a multiprocessing pool
+    pool = multiprocessing.Pool()
+
+    # Iterate over the rows in the dataframe
     for row in df.iterrows():
-        start = time.time()
-        print(f"START {row}")
-        generate_and_analyze_for_edp(row[1], randomObject)
-        end = time.time()
-        print(end - start)
-        print(f"END {row}")
+        # Submit the task to the pool
+        pool.apply_async(generate_and_analyze_for_edp, args=(row[0], row[1], randomSeed))
+
+    # Close the pool
+    pool.close()
+
+    # Wait for all tasks to complete
+    pool.join()
+
+    end = time.time()
+    print("Elapsed time : ", (end - start))
