@@ -124,7 +124,6 @@ class CampaignSpec:
             (self.total_impressions / float(self.num_days))
             * self.random.uniform(1 - DAILY_NOISE_FACTOR, 1 + DAILY_NOISE_FACTOR)
         )
-        numImpressionsThisDay = math.ceil(numImpressionsThisDay / 100)
         for i in range(numImpressionsThisDay):
             vid = self.vids.pop()
             imp = Impression(
