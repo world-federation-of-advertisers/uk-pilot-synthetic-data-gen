@@ -16,7 +16,6 @@
 
 from dataclasses import dataclass, asdict
 import datetime
-import random
 import numpy as np
 from scipy import stats
 import operator
@@ -36,6 +35,9 @@ DAILY_NOISE_FACTOR = 0.1
 # play well with freq distribution.
 ACCEPTABLE_FREQ_DIST_CORRECTION_FACTOR = 0.1
 
+RAND_MIN = 0
+RAND_MAX = 100_000
+
 
 class CampaignSpec:
     """Samples impressions on a given EDP on given dates, such that they approximately align with the given number of impressions, reach, and distributions of frequency, video completion, and viewability
@@ -54,16 +56,25 @@ class CampaignSpec:
     4. For each impression, independently samples the video completion and viewability specified by the given distributions for them.
     """
 
-    def __init__(self, edpId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, random_seed):
+    def __init__(
+        self, edpId, mcId, cId, sd, nd, nImp, tr, freqDistSpec, videoCompDistSpec, viewabilityDistSpec, randomObject
+    ):
         self.eventDataProviderId = edpId
+        self.measurementConsumerId = mcId
+        self.campaignId = cId
         self.num_days = nd
         self.dates = [sd + datetime.timedelta(days=x) for x in range(nd)]
         self.total_impressions = nImp
         self.total_reach = tr
-        tempFreqDist = DiscreteDist(self.normalize(freqDistSpec), random_seed)
+        self.random = randomObject
+        tempFreqDist = DiscreteDist(self.normalize(freqDistSpec), self.random.randint(RAND_MIN, RAND_MAX))
         self.freq_dist = self.reconstruct_freq_dist(tempFreqDist)
-        self.video_completion_dist = DiscreteDist(videoCompDistSpec, random_seed)
-        self.viewability_dist = DiscreteDist(viewabilityDistSpec, random_seed)
+        self.video_completion_dist = (
+            NoOpDiscreteDist()
+            if videoCompDistSpec == None
+            else DiscreteDist(videoCompDistSpec, self.random.randint(RAND_MIN, RAND_MAX))
+        )
+        self.viewability_dist = DiscreteDist(viewabilityDistSpec, self.random.randint(RAND_MIN, RAND_MAX))
 
         self.vids = self.sampleVids()
 
@@ -73,7 +84,7 @@ class CampaignSpec:
         prob_for_max_freq = list(filter(lambda x: x[0] == max_freq, temp_normailized))[0][1]
 
         distButMax = list(filter(lambda x: x[0] != max_freq, temp_normailized))
-        implied_prob_for_max_freq = 1 - sum([prob for (val, prob) in distButMax])
+        implied_prob_for_max_freq = round(1 - sum([prob for (val, prob) in distButMax]), 3)
 
         # There can be a correction but not much
         assert implied_prob_for_max_freq >= prob_for_max_freq
@@ -92,7 +103,6 @@ class CampaignSpec:
         )
 
         remaining_number_of_impressions = self.total_impressions - implied_number_of_impressions
-
         reach_in_max_freq = self.total_reach * prob_for_max_freq
         new_max_freq = math.ceil(remaining_number_of_impressions / reach_in_max_freq)
         new_prob_tuples = list(filter(lambda x: x[0] != max_freq, freqDist.prob_tuples)) + [
@@ -112,12 +122,14 @@ class CampaignSpec:
         impressions = []
         numImpressionsThisDay = int(
             (self.total_impressions / float(self.num_days))
-            * random.uniform(1 - DAILY_NOISE_FACTOR, 1 + DAILY_NOISE_FACTOR)
+            * self.random.uniform(1 - DAILY_NOISE_FACTOR, 1 + DAILY_NOISE_FACTOR)
         )
         for i in range(numImpressionsThisDay):
             vid = self.vids.pop()
             imp = Impression(
                 self.eventDataProviderId,
+                self.campaignId,
+                self.measurementConsumerId,
                 vid,
                 self.video_completion_dist.sample(),
                 self.viewability_dist.sample(),
@@ -130,14 +142,14 @@ class CampaignSpec:
     def sampleVids(self):
         paddingFactor = 1 + (DAILY_NOISE_FACTOR)
         # Multiplied by the padding factor so that we don't run out of vids to sample due to daily reach noises adding up
-        vidsToUse = random.sample(range(NUM_VIDS), int(paddingFactor * self.total_reach))
+        vidsToUse = self.random.sample(range(NUM_VIDS), int(paddingFactor * self.total_reach))
         vids = []
         while len(vidsToUse) > 0:  # Keep generating until you run out of vids used for sampling
             numImpressionsForVid = self.freq_dist.sample()
             vid = vidsToUse.pop()
             vid_replicated = [vid] * numImpressionsForVid
             vids += vid_replicated
-        random.shuffle(vids)
+        self.random.shuffle(vids)
         return vids
 
 
@@ -147,6 +159,12 @@ class Impression:
 
     # Id of the Event Data Provider
     eventDataProviderId: str
+
+    # Id of the campaign this impression belongs to
+    campaignId: str
+
+    # Id of the Measurement Consumer this impression belongs to
+    mcId: str
 
     # virtual person id
     vid: int
@@ -173,15 +191,25 @@ class DiscreteDist:
         assert len(set(self.vals)) == len(prob_tuples)
 
         self.probs = np.arange(len(prob_tuples)), list(map(operator.itemgetter(1), prob_tuples))
-        self.custm = stats.rv_discrete(name="custm", values=self.probs, seed=random_seed)
+        self.custm = stats.rv_discrete(name="custm", values=self.probs, seed=self.seed)
 
     def sample(self):
         return self.vals[self.custm.rvs(size=1)[0]]
 
 
+class NoOpDiscreteDist(DiscreteDist):
+    def __init__(self):
+        super().__init__([(0, 1)], 0)
+
+    def sample(self):
+        return "NaN"
+
+
 def generate(
-    random_seed,
+    randomObject,
     edpId,
+    mcId,
+    campaignId,
     completionDistSpec,
     viewabilityDistSpec,
     realFreqDistSpec,
@@ -190,9 +218,10 @@ def generate(
     total_impressions,
     total_reach,
 ):
-    random.seed(random_seed)
     campaignSpec = CampaignSpec(
         edpId,
+        mcId,
+        campaignId,
         startdate,
         numdays,
         total_impressions,
@@ -200,7 +229,7 @@ def generate(
         realFreqDistSpec,
         completionDistSpec,
         viewabilityDistSpec,
-        random_seed,
+        randomObject,
     )
     return reduce(
         list.__add__,

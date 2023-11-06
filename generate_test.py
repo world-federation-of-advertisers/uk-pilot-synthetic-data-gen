@@ -21,6 +21,8 @@ ACCEPTABLE_RELATIVE_ERROR = 1e-1
 class GenerateTest(TestCase):
     def test_simple_spec(self):
         random_seed = 42
+        randomObject = random.Random()
+        randomObject.seed(random_seed)
         completionDistSpec = [
             ("0%+", 0.2),
             ("25%+", 0.2),
@@ -41,8 +43,10 @@ class GenerateTest(TestCase):
         total_impressions = 9_000
         total_reach = 2_950
         impressions = generate(
-            random_seed,
+            randomObject,
             "EDP1",
+            "SomeMC",
+            "SomeCampaign",
             completionDistSpec,
             viewabilityDistSpec,
             realFreqDistSpec,
