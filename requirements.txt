@@ -3,4 +3,3 @@ scipy
 pytest
 pandas
 black
-multiprocessing
