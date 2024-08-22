@@ -174,12 +174,6 @@ class CampaignSpec:
         self.random.shuffle(vids)
         return vids
 
-@dataclass
-class VirtualPerson:
-    # id of the virtual person
-    vid : int
-
-
 
 @dataclass
 class Impression:
