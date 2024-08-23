@@ -38,6 +38,12 @@ ACCEPTABLE_FREQ_DIST_CORRECTION_FACTOR = 0.1
 RAND_MIN = 0
 RAND_MAX = 100_000
 
+DEMO_BUCKETS = [{"age_range": "16-34", "sex" : "female" }, 
+                {"age_range": "35-54", "sex" : "female" },
+                {"age_range": "55+", "sex"   : "female" },
+                {"age_range": "16-34", "sex" : "male" }, 
+                {"age_range": "35-54", "sex" : "male" },
+                {"age_range": "55+", "sex"   : "male" }]
 
 class CampaignSpec:
     """Samples impressions on a given EDP on given dates, such that they approximately align with the given number of impressions, reach, and distributions of frequency, video completion, and viewability
@@ -118,6 +124,19 @@ class CampaignSpec:
         )
         return new_freq_dist
 
+    # Demos are uniformly distributed
+    def getDemo(self, vid):
+        num_buckets = len(DEMO_BUCKETS)
+
+        # Calculate the ideal number of IDs per bucket
+        ids_per_bucket = math.ceil(NUM_VIDS / num_buckets)
+
+        # Determine the bucket index based on the person ID
+        bucket_index = (vid - 1) // ids_per_bucket 
+        demo_bucket = DEMO_BUCKETS[bucket_index]
+
+        return (demo_bucket["age_range"], demo_bucket["sex"])
+
     def sampleImpressionsForDay(self, date):
         impressions = []
         numImpressionsThisDay = int(
@@ -126,14 +145,17 @@ class CampaignSpec:
         )
         for i in range(numImpressionsThisDay):
             vid = self.vids.pop()
+            age_range, sex = self.getDemo(vid)
             imp = Impression(
-                self.eventDataProviderId,
-                self.campaignId,
-                self.measurementConsumerId,
-                vid,
-                self.video_completion_dist.sample(),
-                self.viewability_dist.sample(),
-                date.strftime("%d-%m-%Y"),
+                eventDataProviderId=self.eventDataProviderId,
+                campaignId=self.campaignId,
+                mcId=self.measurementConsumerId,
+                vid=vid,
+                sex=sex,
+                age_range=age_range,
+                digital_video_completion_status=self.video_completion_dist.sample(),
+                viewability=self.viewability_dist.sample(),
+                date=date.strftime("%d-%m-%Y"),
             )
             impressions.append(imp)
         return impressions
@@ -168,6 +190,12 @@ class Impression:
 
     # virtual person id
     vid: int
+
+    # Sex of the virtual person
+    sex : str
+
+    # Age range of the virtual person
+    age_range : str
 
     # Only for video
     digital_video_completion_status: float  # in unit interval
